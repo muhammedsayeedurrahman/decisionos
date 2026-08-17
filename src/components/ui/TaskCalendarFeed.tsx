@@ -46,6 +46,16 @@ import {
   getCategoryColor,
   getCalendarChipStyle,
 } from './TaskCalendar';
+import {
+  TaskListView,
+  CalendarHeader,
+  FilterBar,
+  CalendarGrid,
+  AddTaskModal,
+  TaskDetailsModal,
+  useCalendarState,
+  useTaskActions,
+} from './TaskCalendar';
 
 // Re-export NewTaskInput for external use
 export type { NewTaskInput };
@@ -69,25 +79,44 @@ export default function TaskCalendarFeed({
   );
   const currentTimeTopPercent = useMemo(() => getCurrentTimeTopPercent(), []);
 
-  const [viewMode, setViewMode] = useState<'calendar' | 'tasks' | 'split'>('split');
-  // Split/calendar are grid-heavy desktop layouts; land phone-width visitors
-  // on the plain task list instead (they can still switch views manually).
-  useEffect(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT_PX) {
-      setViewMode('tasks');
-    }
-  }, []);
-  const [calendarViewType, setCalendarViewType] = useState<'month' | 'week'>('month');
-  const [activeWeekNum, setActiveWeekNum] = useState<number>(() => {
-    const currentWeek = weeksDataToday.find(w => w.days.some(d => d.isToday));
-    return currentWeek ? currentWeek.weekNum : 32;
-  });
-  const [selectedTask, setSelectedTask] = useState<ScheduledTask | null>(null);
-  const [starredTasks, setStarredTasks] = useState<Record<number, boolean>>({});
-  const [completedCollapsed, setCompletedCollapsed] = useState(false);
-  const [isCalendarLarge, setIsCalendarLarge] = useState(false);
-  // keyboard row-focus for month grid (0-5 maps to weeksData indices)
-  const [focusedWeekIdx, setFocusedWeekIdx] = useState<number | null>(null);
+  // ─── Calendar State Hook ───
+  const calendarState = useCalendarState(todayDayOfYear);
+  const {
+    viewMode,
+    setViewMode,
+    calendarViewType,
+    setCalendarViewType,
+    isCalendarLarge,
+    setIsCalendarLarge,
+    activeWeekNum,
+    setActiveWeekNum,
+    selectedTask,
+    setSelectedTask,
+    starredTasks,
+    setStarredTasks,
+    focusedWeekIdx,
+    setFocusedWeekIdx,
+    completedCollapsed,
+    setCompletedCollapsed,
+    showAddTask,
+    setShowAddTask,
+    newTitle,
+    setNewTitle,
+    newSubtext,
+    setNewSubtext,
+    newType,
+    setNewType,
+    newCategory,
+    setNewCategory,
+    newDate,
+    setNewDate,
+    newTime,
+    setNewTime,
+    resetAddTaskForm,
+    swipeState,
+    setSwipeState,
+  } = calendarState;
+
   const monthGridRef = useRef<HTMLDivElement>(null);
 
   // ─── Pull to refresh ───
@@ -101,31 +130,46 @@ export default function TaskCalendarFeed({
     disabled: typeof window !== 'undefined' && window.innerWidth >= MOBILE_BREAKPOINT_PX, // Only on mobile
   });
 
-  // ─── Add Task modal state ───
-  const [showAddTask, setShowAddTask] = useState(false);
-  const [newTitle, setNewTitle] = useState('');
-  const [newSubtext, setNewSubtext] = useState('');
-  const [newType, setNewType] = useState<TaskCard['type']>('TASK');
-  const [newCategory, setNewCategory] = useState<TaskCard['category']>('OTHER');
-  const [newDate, setNewDate] = useState(() => {
-    const todayIso = new Date().toISOString().slice(0, 10);
-    return todayIso >= DEMO_CALENDAR_MIN_DATE && todayIso <= DEMO_CALENDAR_MAX_DATE ? todayIso : DEMO_CALENDAR_MIN_DATE;
-  });
-  const [newTime, setNewTime] = useState('09:00');
-
-  // ─── Swipe gesture state ───
-  const [swipeState, setSwipeState] = useState<{
-    taskId: number | null;
-    startX: number;
-    currentX: number;
-    isSwiping: boolean;
-  }>({ taskId: null, startX: 0, currentX: 0, isSwiping: false });
-
   // ─── Focus trap for Add Task modal ───
   const addTaskTrapRef = useFocusTrap(showAddTask, () => setShowAddTask(false));
 
   // ─── Focus trap for Task Details modal ───
   const taskDetailsTrapRef = useFocusTrap(!!selectedTask, () => setSelectedTask(null));
+
+  // ─── Task Actions Hook ───
+  const taskActions = useTaskActions({
+    setStarredTasks,
+    setSwipeState,
+    setActiveWeekNum,
+    setCalendarViewType,
+    setFocusedWeekIdx,
+    resetAddTaskForm,
+    swipeState,
+    activeWeekNum,
+    calendarViewType,
+    showAddTask,
+    selectedTask,
+    newTitle,
+    handleMarkDone,
+    handleDismiss,
+    handleSendToBoard,
+    onAddTask,
+    newSubtext,
+    newType,
+    newCategory,
+    newDate,
+    newTime,
+  });
+  const {
+    toggleStar,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+    handleWeekNav,
+    selectWeekFromDay,
+    handleMonthGridKeyDown,
+    handleAddTaskSubmit,
+  } = taskActions;
 
   // ─── Keyboard navigation for week picker ───
   useEffect(() => {
@@ -151,62 +195,7 @@ export default function TaskCalendarFeed({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showAddTask, selectedTask, weeksData, activeWeekNum]);
-
-  // ─── Swipe gesture handlers ───
-  const handleTouchStart = (e: React.TouchEvent, taskId: number) => {
-    const touch = e.touches[0];
-    setSwipeState({
-      taskId,
-      startX: touch.clientX,
-      currentX: touch.clientX,
-      isSwiping: true,
-    });
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!swipeState.isSwiping) return;
-    const touch = e.touches[0];
-    setSwipeState(prev => ({ ...prev, currentX: touch.clientX }));
-  };
-
-  const handleTouchEnd = (taskId: number) => {
-    if (!swipeState.isSwiping) return;
-
-    const swipeDistance = swipeState.currentX - swipeState.startX;
-    const threshold = 100; // Minimum swipe distance in pixels
-
-    if (Math.abs(swipeDistance) > threshold) {
-      if (swipeDistance > 0) {
-        // Swipe right: Star/unstar task
-        setStarredTasks(prev => ({ ...prev, [taskId]: !prev[taskId] }));
-      } else {
-        // Swipe left: Dismiss task
-        handleDismiss(taskId);
-      }
-    }
-
-    // Reset swipe state
-    setSwipeState({ taskId: null, startX: 0, currentX: 0, isSwiping: false });
-  };
-
-  const handleAddTaskSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitle.trim()) return;
-    onAddTask({
-      title: newTitle.trim(),
-      subtext: newSubtext.trim(),
-      type: newType,
-      category: newCategory,
-      scheduledDate: newDate,
-      scheduledTime: newTime,
-    });
-    setNewTitle('');
-    setNewSubtext('');
-    setNewType('TASK');
-    setNewCategory('OTHER');
-    setShowAddTask(false);
-  };
+  }, [showAddTask, selectedTask, weeksData, activeWeekNum, setActiveWeekNum]);
 
   const activeWeek = weeksDataToday.find(w => w.weekNum === activeWeekNum) || weeksDataToday[1];
   const hours = Array.from({ length: WORKING_HOURS_COUNT }, (_, i) => i + WORKING_HOURS_START); // 8 AM to 6 PM
@@ -224,44 +213,6 @@ export default function TaskCalendarFeed({
     }
     return card.category === activeFilter;
   }), [scheduledTasks, activeFilter]);
-
-  const toggleStar = useCallback((id: number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setStarredTasks(prev => ({ ...prev, [id]: !prev[id] }));
-  }, []);
-
-  const handleWeekNav = (direction: 'prev' | 'next') => {
-    const currentIdx = weeksData.findIndex(w => w.weekNum === activeWeekNum);
-    if (direction === 'prev' && currentIdx > 0) {
-      setActiveWeekNum(weeksData[currentIdx - 1].weekNum);
-    } else if (direction === 'next' && currentIdx < weeksData.length - 1) {
-      setActiveWeekNum(weeksData[currentIdx + 1].weekNum);
-    }
-  };
-
-  const selectWeekFromDay = (weekNum: number) => {
-    setActiveWeekNum(weekNum);
-    setCalendarViewType('week');
-    setFocusedWeekIdx(null);
-  };
-
-  // Keyboard handler for the month grid
-  const handleMonthGridKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (calendarViewType !== 'month') return;
-    const total = weeksData.length;
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setFocusedWeekIdx(prev => prev === null ? 0 : Math.min(prev + 1, total - 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setFocusedWeekIdx(prev => prev === null ? 0 : Math.max(prev - 1, 0));
-    } else if (e.key === 'Enter' && focusedWeekIdx !== null) {
-      e.preventDefault();
-      selectWeekFromDay(weeksData[focusedWeekIdx].weekNum);
-    } else if (e.key === 'Escape') {
-      setFocusedWeekIdx(null);
-    }
-  };
 
   return (
     <div className="flex flex-col bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm overflow-hidden select-none relative z-10">
@@ -282,144 +233,23 @@ export default function TaskCalendarFeed({
         </div>
       )}
 
-      {/* ─── Google Workspace styled Header ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-900/50">
-        
-        {/* Left Side: Calendar Navigation */}
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            {calendarViewType === 'week' && (
-              <button 
-                onClick={() => setCalendarViewType('month')}
-                className="flex items-center gap-1 px-2 py-1 text-[10px] font-mono font-bold bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-600 rounded-lg text-zinc-600 dark:text-zinc-300 shadow-sm transition-colors cursor-pointer"
-              >
-                <ArrowLeft className="w-3 h-3" />
-                <span>MONTH</span>
-              </button>
-            )}
-            <div className="flex items-center gap-1">
-              <span className="p-1 text-brand-red shrink-0">
-                <CalendarIcon className="w-5 h-5" />
-              </span>
-              <h2 className="text-sm font-bold tracking-tight text-zinc-900 dark:text-white uppercase font-mono whitespace-nowrap">
-                {calendarViewType === 'month' 
-                  ? 'August 2026' 
-                  : `Aug ${activeWeek.days[0].date} - ${activeWeek.days[6].date}, 2026`}
-              </h2>
-            </div>
-          </div>
-          
-          <div className="flex items-center gap-1 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg p-0.5 shadow-sm">
-            <button
-              onClick={() => handleWeekNav('prev')}
-              disabled={calendarViewType === 'month'}
-              className={`p-1 sm:p-2 rounded transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center ${
-                calendarViewType === 'month'
-                  ? 'opacity-40 text-zinc-400 dark:text-zinc-700 cursor-not-allowed'
-                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700'
-              }`}
-              aria-label="Previous week"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="text-[10px] font-mono px-2 text-zinc-500 dark:text-zinc-400 font-bold whitespace-nowrap">
-              {calendarViewType === 'month' ? 'ALL WEEKS' : (
-                <>
-                  WEEK {activeWeek.weekNum}
-                  <span className="hidden sm:inline text-[9px] opacity-60 ml-1.5" title="Use arrow keys to navigate">← →</span>
-                </>
-              )}
-            </span>
-            <button
-              onClick={() => handleWeekNav('next')}
-              disabled={calendarViewType === 'month'}
-              className={`p-1 sm:p-2 rounded transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center ${
-                calendarViewType === 'month'
-                  ? 'opacity-40 text-zinc-400 dark:text-zinc-700 cursor-not-allowed'
-                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700'
-              }`}
-              aria-label="Next week"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+      {/* ─── Calendar Header ─── */}
+      <CalendarHeader
+        viewMode={viewMode}
+        calendarViewType={calendarViewType}
+        activeWeek={activeWeek}
+        onViewModeChange={setViewMode}
+        onCalendarViewTypeChange={setCalendarViewType}
+        onWeekNav={handleWeekNav}
+        onJumpToCurrentWeek={() => selectWeekFromDay(32)}
+      />
 
-          <button 
-            onClick={() => selectWeekFromDay(32)}
-            className="hidden md:inline-flex px-2.5 py-1 text-[10px] font-mono font-bold bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 rounded-lg hover:border-zinc-400 dark:hover:border-zinc-600 shadow-sm transition-all cursor-pointer"
-          >
-            CURRENT WEEK
-          </button>
-        </div>
-
-        {/* View Toggle (Calendar / Tasks / Split) */}
-        <div className="flex items-center bg-zinc-100 dark:bg-zinc-900 p-1 rounded-xl self-start sm:self-center">
-          <button 
-            onClick={() => setViewMode('calendar')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono font-bold rounded-lg transition-all cursor-pointer ${
-              viewMode === 'calendar' 
-                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' 
-                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
-            }`}
-          >
-            <CalendarIcon className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">CALENDAR</span>
-          </button>
-          <button 
-            onClick={() => setViewMode('tasks')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono font-bold rounded-lg transition-all cursor-pointer ${
-              viewMode === 'tasks' 
-                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' 
-                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
-            }`}
-          >
-            <ListTodo className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">TASKS</span>
-          </button>
-          <button 
-            onClick={() => setViewMode('split')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-mono font-bold rounded-lg transition-all cursor-pointer ${
-              viewMode === 'split' 
-                ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-white shadow-sm' 
-                : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
-            }`}
-          >
-            <div className="flex gap-0.5 items-center">
-              <span className="w-1.5 h-3 border-r border-current opacity-70"></span>
-              <span className="w-1.5 h-3"></span>
-            </div>
-            <span className="hidden sm:inline">SPLIT VIEW</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ─── Category Filter Tabs ─── */}
-      {/* Add Task sits outside the scroll container so it stays reachable
-          without scrolling even once the tabs overflow on a narrow screen. */}
-      <div className="flex items-center gap-2 p-2 border-b border-zinc-200 dark:border-zinc-800/80 bg-zinc-50/20 dark:bg-zinc-900/20">
-        <div className="flex items-center gap-1 flex-1 min-w-0 overflow-x-auto scrollbar-none">
-          {FILTER_TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveFilter(tab.key)}
-              className={`px-3 py-1 text-[10px] font-mono font-bold uppercase rounded-full border transition-all shrink-0 cursor-pointer ${
-                activeFilter === tab.key
-                  ? 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 border-zinc-900 dark:border-white shadow-sm'
-                  : 'text-zinc-500 dark:text-zinc-400 border-transparent hover:border-zinc-200 dark:hover:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800/50'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={() => setShowAddTask(true)}
-          className="shrink-0 flex items-center gap-1 px-3 py-1 text-[10px] font-mono font-bold uppercase rounded-full bg-brand-red text-white hover:bg-red-700 transition-colors cursor-pointer"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span className="hidden min-[380px]:inline">Add Task</span>
-        </button>
-      </div>
+      {/* ─── Filter Bar ─── */}
+      <FilterBar
+        activeFilter={activeFilter}
+        onFilterChange={setActiveFilter}
+        onAddTask={() => setShowAddTask(true)}
+      />
 
       {/* ─── Main Content Workspace ─── */}
       {/* Stacks vertically below md — a side-by-side split makes each pane
@@ -741,182 +571,27 @@ export default function TaskCalendarFeed({
         )}
 
         {(viewMode === 'tasks' || viewMode === 'split') && (
-          <div 
-            onClick={() => {
+          <TaskListView
+            viewMode={viewMode}
+            isCalendarLarge={isCalendarLarge}
+            onCalendarSizeToggle={() => {
               if (viewMode === 'split' && isCalendarLarge) {
                 setIsCalendarLarge(false);
               }
             }}
-            className={`flex flex-col bg-white dark:bg-zinc-900 transition-all duration-300 ${
-              viewMode === 'tasks' 
-                ? 'flex-1' 
-                : isCalendarLarge 
-                  ? 'w-full md:w-80 lg:w-96 border-t md:border-t-0 md:border-l border-zinc-200 dark:border-zinc-800 shrink-0'
-                  : 'flex-1 border-t md:border-t-0 md:border-l border-zinc-200 dark:border-zinc-800'
-            }`}
-          >
-            
-            {/* List label header */}
-            <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-zinc-50/30 dark:bg-zinc-950/20 shrink-0">
-              <span className="text-[10px] font-mono font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
-                Google Tasks &bull; My Tasks
-              </span>
-              <span className="text-[9px] font-mono text-zinc-400">
-                {filteredScheduledTasks.filter(t => !t.done).length} active
-              </span>
-            </div>
-
-            {/* Google Tasks simple todo items list */}
-            <div className="flex-1 overflow-y-auto divide-y divide-zinc-100 dark:divide-zinc-900 p-2 space-y-1 scrollbar-thin">
-              
-              {/* Active / Uncompleted Tasks section */}
-              <div className="space-y-0.5">
-                {filteredScheduledTasks.filter(t => !t.done).length === 0 ? (
-                  <div className="py-12 text-center text-zinc-400 dark:text-zinc-500 flex flex-col items-center">
-                    <CheckCircle2 className="w-8 h-8 text-zinc-300 dark:text-zinc-700 mb-2 animate-pulse" />
-                    <p className="text-[11px] font-bold uppercase tracking-wider">All tasks completed</p>
-                    <p className="text-[9px] font-mono mt-0.5">Nice work!</p>
-                  </div>
-                ) : (
-                  filteredScheduledTasks.filter(t => !t.done).map((task) => {
-                    const swipeOffset = swipeState.isSwiping && swipeState.taskId === task.id
-                      ? swipeState.currentX - swipeState.startX
-                      : 0;
-
-                    return (
-                      <div
-                        key={task.id}
-                        onClick={() => setSelectedTask(task)}
-                        onTouchStart={(e) => handleTouchStart(e, task.id)}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={() => handleTouchEnd(task.id)}
-                        style={{
-                          transform: swipeOffset !== 0 ? `translateX(${swipeOffset}px)` : undefined,
-                          transition: swipeState.isSwiping && swipeState.taskId === task.id ? 'none' : 'all 0.2s',
-                        }}
-                        className="group flex items-start gap-2.5 p-2 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800/40 cursor-pointer border border-transparent hover:border-zinc-100 dark:hover:border-zinc-900"
-                      >
-                      {/* Checkbox button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMarkDone(task.id);
-                        }}
-                        className="mt-0.5 w-4.5 h-4.5 rounded-full border border-zinc-300 dark:border-zinc-700 hover:border-brand-red flex items-center justify-center shrink-0 bg-transparent transition-all cursor-pointer"
-                      >
-                        <Check className="w-3 h-3 text-white group-hover:text-brand-red/60 transition-colors opacity-0 group-hover:opacity-100" />
-                      </button>
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className="text-[8px] font-mono font-black uppercase px-1 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded">
-                            {task.type}
-                          </span>
-                          <span className="text-[8px] font-mono text-zinc-500 dark:text-zinc-500">
-                            {task.startTime} {task.weekNum !== 32 ? `(W${task.weekNum})` : ''}
-                          </span>
-                        </div>
-                        <p className="text-xs font-semibold text-zinc-800 dark:text-zinc-100 leading-snug truncate">
-                          {task.title}
-                        </p>
-                        {task.subtext && (
-                          <p className="text-[10px] text-zinc-400 dark:text-zinc-500 line-clamp-1 mt-0.5 leading-relaxed font-mono">
-                            {task.subtext}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Right icons (Star & actions) */}
-                      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => toggleStar(task.id, e)}
-                          className="p-2 text-zinc-300 hover:text-amber-400 transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
-                          aria-label={starredTasks[task.id] ? "Unstar task" : "Star task"}
-                        >
-                          <Star className={`w-3.5 h-3.5 ${starredTasks[task.id] ? 'fill-amber-400 text-amber-400' : ''}`} />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDismiss(task.id);
-                          }}
-                          className="p-2 text-zinc-400 hover:text-red-500 transition-colors cursor-pointer min-w-[44px] min-h-[44px] flex items-center justify-center"
-                          aria-label="Dismiss task"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* Completed Tasks Accordion */}
-              {filteredScheduledTasks.some(t => t.done) && (
-                <div className="mt-4 pt-2 border-t border-zinc-200 dark:border-zinc-800/80">
-                  <button 
-                    onClick={() => setCompletedCollapsed(!completedCollapsed)}
-                    className="w-full flex items-center justify-between p-1.5 text-[10px] font-mono font-bold text-zinc-400 dark:text-zinc-500 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors cursor-pointer"
-                  >
-                    <span>COMPLETED ({filteredScheduledTasks.filter(t => t.done).length})</span>
-                    <ChevronRight className={`w-3.5 h-3.5 transition-transform ${completedCollapsed ? '' : 'rotate-90'}`} />
-                  </button>
-
-                  {!completedCollapsed && (
-                    <div className="space-y-0.5 mt-1">
-                      {filteredScheduledTasks.filter(t => t.done).map((task) => {
-                        const swipeOffset = swipeState.isSwiping && swipeState.taskId === task.id
-                          ? swipeState.currentX - swipeState.startX
-                          : 0;
-
-                        return (
-                          <div
-                            key={task.id}
-                            onClick={() => setSelectedTask(task)}
-                            onTouchStart={(e) => handleTouchStart(e, task.id)}
-                            onTouchMove={handleTouchMove}
-                            onTouchEnd={() => handleTouchEnd(task.id)}
-                            style={{
-                              transform: swipeOffset !== 0 ? `translateX(${swipeOffset}px)` : undefined,
-                              transition: swipeState.isSwiping && swipeState.taskId === task.id ? 'none' : 'all 0.2s',
-                            }}
-                            className="group flex items-start gap-2.5 p-2 rounded-xl bg-zinc-50/20 dark:bg-zinc-950/10 hover:bg-zinc-50 dark:hover:bg-zinc-800/20 opacity-55 hover:opacity-85 cursor-pointer"
-                          >
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMarkDone(task.id);
-                            }}
-                            className="mt-0.5 w-4.5 h-4.5 rounded-full border border-emerald-500 bg-emerald-500 dark:bg-emerald-600/30 flex items-center justify-center shrink-0 cursor-pointer"
-                          >
-                            <Check className="w-2.5 h-2.5 text-white" />
-                          </button>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-500 line-through truncate">
-                              {task.title}
-                            </p>
-                          </div>
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDismiss(task.id);
-                            }}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-zinc-400 hover:text-red-500 transition-all cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-            </div>
-          </div>
+            filteredTasks={filteredScheduledTasks}
+            onSelectTask={setSelectedTask}
+            onMarkDone={handleMarkDone}
+            onDismiss={handleDismiss}
+            onToggleStar={toggleStar}
+            starredTasks={starredTasks}
+            completedCollapsed={completedCollapsed}
+            onToggleCompletedCollapse={() => setCompletedCollapsed(!completedCollapsed)}
+            swipeState={swipeState}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          />
         )}
 
       </div>

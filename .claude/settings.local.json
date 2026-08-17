@@ -71,7 +71,10 @@
       "Bash(gh run view:*)",
       "Bash(gh run watch:*)",
       "Bash(test:*)",
-      "Bash(/c/code/decisionos-main/src/app/api/task-breakdown/route.ts:*)"
+      "Bash(/c/code/decisionos-main/src/app/api/task-breakdown/route.ts:*)",
+      "Bash(\"C:\\\\code\\\\decisionos-main\\\\src\\\\components\\\\ui\\\\TaskCalendar\\\\index.ts\":*)",
+      "Bash(npm run validate-env:*)",
+      "Bash(tee:*)"
     ]
   }
 }

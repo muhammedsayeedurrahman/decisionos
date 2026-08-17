@@ -12,6 +12,11 @@ import { validateEnv } from '../src/lib/env';
 // Load environment variables from .env.local
 config({ path: '.env.local' });
 
+// Set NODE_ENV to production for build validation if not already set
+if (!process.env.NODE_ENV) {
+  process.env.NODE_ENV = 'production';
+}
+
 console.log('🔍 Validating environment variables...\n');
 
 try {

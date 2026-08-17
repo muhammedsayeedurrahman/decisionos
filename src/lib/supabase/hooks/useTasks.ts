@@ -67,7 +67,7 @@ export function useTasks() {
     };
   }, [workspaceId, fetchTasks]);
 
-  // Create task
+  // Create task with optimistic UI update
   const createTask = useCallback(
     async (taskData: {
       title: string;
@@ -83,7 +83,33 @@ export function useTasks() {
         throw new Error('Not authenticated');
       }
 
+      // Create optimistic task with temporary ID
+      const optimisticTask: Task = {
+        id: `temp-${Date.now()}`,
+        workspace_id: workspaceId,
+        created_by: profile.id,
+        title: taskData.title,
+        subtext: taskData.subtext || null,
+        type: taskData.type,
+        source: taskData.source,
+        category: taskData.category,
+        assignedTo: taskData.assignedTo || null,
+        assigned_to: taskData.assignedTo || null,
+        done: false,
+        scheduledDate: taskData.scheduledDate || null,
+        scheduled_date: taskData.scheduledDate || null,
+        scheduledTime: taskData.scheduledTime || null,
+        scheduled_time: taskData.scheduledTime || null,
+        detailsCount: 0,
+        details_count: 0,
+        created_at: new Date().toISOString(),
+      };
+
+      // 1. OPTIMISTIC UPDATE: Add task to UI immediately
+      setTasks((prev) => [optimisticTask, ...prev]);
+
       try {
+        // 2. Make API call
         const newTask = await taskQueries.createTask({
           workspace_id: workspaceId,
           created_by: profile.id,
@@ -99,10 +125,14 @@ export function useTasks() {
           details_count: 0,
         });
 
-        // Optimistically update local state
-        setTasks((prev) => [newTask, ...prev]);
+        // 3. Replace optimistic task with real task
+        setTasks((prev) =>
+          prev.map((task) => (task.id === optimisticTask.id ? newTask : task))
+        );
         return newTask;
       } catch (err) {
+        // 4. ROLLBACK: Remove optimistic task on error
+        setTasks((prev) => prev.filter((task) => task.id !== optimisticTask.id));
         setError(err instanceof Error ? err.message : 'Failed to create task');
         throw err;
       }
@@ -110,10 +140,21 @@ export function useTasks() {
     [workspaceId, profile]
   );
 
-  // Update task
+  // Update task with optimistic UI update
   const updateTask = useCallback(
     async (taskId: string, updates: Partial<Task>) => {
+      // 1. Store previous state for rollback
+      const previousTasks = tasks;
+
+      // 2. OPTIMISTIC UPDATE: Update immediately in UI
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === taskId ? { ...task, ...updates } : task
+        )
+      );
+
       try {
+        // 3. Make API call
         const updatedTask = await taskQueries.updateTask(taskId, {
           title: updates.title,
           subtext: updates.subtext,
@@ -127,50 +168,76 @@ export function useTasks() {
           details_count: updates.detailsCount,
         });
 
-        // Optimistically update local state
+        // 4. Update with server response
         setTasks((prev) =>
           prev.map((task) => (task.id === taskId ? updatedTask : task))
         );
         return updatedTask;
       } catch (err) {
+        // 5. ROLLBACK: Restore previous state on error
+        setTasks(previousTasks);
         setError(err instanceof Error ? err.message : 'Failed to update task');
         throw err;
       }
     },
-    []
+    [tasks]
   );
 
-  // Toggle task done
+  // Toggle task done with optimistic UI update
   const toggleTaskDone = useCallback(
     async (taskId: string, done: boolean) => {
+      // 1. Store previous state for rollback
+      const previousTasks = tasks;
+
+      // 2. OPTIMISTIC UPDATE: Toggle immediately in UI
+      setTasks((prev) =>
+        prev.map((task) =>
+          task.id === taskId ? { ...task, done } : task
+        )
+      );
+
       try {
+        // 3. Make API call
         const updatedTask = await taskQueries.toggleTaskDone(taskId, done);
 
-        // Optimistically update local state
+        // 4. Update with server response (already updated optimistically)
         setTasks((prev) =>
           prev.map((task) => (task.id === taskId ? updatedTask : task))
         );
         return updatedTask;
       } catch (err) {
+        // 5. ROLLBACK: Restore previous state on error
+        setTasks(previousTasks);
         setError(err instanceof Error ? err.message : 'Failed to toggle task');
         throw err;
       }
     },
-    []
+    [tasks]
   );
 
-  // Delete task
+  // Delete task with optimistic UI update
   const deleteTask = useCallback(async (taskId: string) => {
+    // 1. Store deleted task for rollback
+    const deletedTask = tasks.find((task) => task.id === taskId);
+    if (!deletedTask) {
+      throw new Error('Task not found');
+    }
+
+    // 2. OPTIMISTIC UPDATE: Remove from UI immediately
+    setTasks((prev) => prev.filter((task) => task.id !== taskId));
+
     try {
+      // 3. Make API call
       await taskQueries.deleteTask(taskId);
 
-      // Optimistically update local state
-      setTasks((prev) => prev.filter((task) => task.id !== taskId));
+      // Task successfully deleted, optimistic update was correct
     } catch (err) {
+      // 4. ROLLBACK: Restore deleted task on error
+      setTasks((prev) => [deletedTask, ...prev]);
       setError(err instanceof Error ? err.message : 'Failed to delete task');
       throw err;
     }
-  }, []);
+  }, [tasks]);
 
   return {
     tasks,

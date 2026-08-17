@@ -66,7 +66,7 @@ export function useHandoffs() {
     };
   }, [workspaceId, fetchHandoffs]);
 
-  // Create handoff
+  // Create handoff with optimistic UI update
   const createHandoff = useCallback(
     async (handoffData: {
       toUserId: string;
@@ -78,7 +78,26 @@ export function useHandoffs() {
         throw new Error('Not authenticated');
       }
 
+      // Create optimistic handoff with temporary ID
+      const optimisticHandoff: Handoff = {
+        id: `temp-${Date.now()}`,
+        workspace_id: workspaceId,
+        from_user_id: profile.id,
+        to_user_id: handoffData.toUserId,
+        title: handoffData.title,
+        description: handoffData.description || null,
+        instruction: handoffData.instruction || null,
+        status: 'pending',
+        reply_text: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      // 1. OPTIMISTIC UPDATE: Add to UI immediately
+      setHandoffs((prev) => [optimisticHandoff, ...prev]);
+
       try {
+        // 2. Make API call
         const newHandoff = await handoffQueries.createHandoff({
           workspace_id: workspaceId,
           from_user_id: profile.id,
@@ -90,9 +109,14 @@ export function useHandoffs() {
           reply_text: null,
         });
 
-        setHandoffs((prev) => [newHandoff, ...prev]);
+        // 3. Replace optimistic handoff with real handoff
+        setHandoffs((prev) =>
+          prev.map((h) => (h.id === optimisticHandoff.id ? newHandoff : h))
+        );
         return newHandoff;
       } catch (err) {
+        // 4. ROLLBACK: Remove optimistic handoff on error
+        setHandoffs((prev) => prev.filter((h) => h.id !== optimisticHandoff.id));
         setError(err instanceof Error ? err.message : 'Failed to create handoff');
         throw err;
       }
@@ -100,65 +124,121 @@ export function useHandoffs() {
     [workspaceId, profile]
   );
 
-  // Submit handoff response
+  // Submit handoff response with optimistic UI update
   const submitHandoff = useCallback(
     async (handoffId: string, replyText: string) => {
+      // 1. Store previous state for rollback
+      const previousHandoffs = handoffs;
+
+      // 2. OPTIMISTIC UPDATE: Update status immediately
+      setHandoffs((prev) =>
+        prev.map((h) =>
+          h.id === handoffId
+            ? { ...h, status: 'submitted' as const, reply_text: replyText }
+            : h
+        )
+      );
+
       try {
+        // 3. Make API call
         const updatedHandoff = await handoffQueries.submitHandoff(handoffId, replyText);
 
+        // 4. Update with server response
         setHandoffs((prev) =>
           prev.map((h) => (h.id === handoffId ? updatedHandoff : h))
         );
         return updatedHandoff;
       } catch (err) {
+        // 5. ROLLBACK: Restore previous state on error
+        setHandoffs(previousHandoffs);
         setError(err instanceof Error ? err.message : 'Failed to submit handoff');
         throw err;
       }
     },
-    []
+    [handoffs]
   );
 
-  // Approve handoff
+  // Approve handoff with optimistic UI update
   const approveHandoff = useCallback(async (handoffId: string) => {
+    // 1. Store previous state for rollback
+    const previousHandoffs = handoffs;
+
+    // 2. OPTIMISTIC UPDATE: Update status immediately
+    setHandoffs((prev) =>
+      prev.map((h) =>
+        h.id === handoffId ? { ...h, status: 'approved' as const } : h
+      )
+    );
+
     try {
+      // 3. Make API call
       const updatedHandoff = await handoffQueries.approveHandoff(handoffId);
 
+      // 4. Update with server response
       setHandoffs((prev) =>
         prev.map((h) => (h.id === handoffId ? updatedHandoff : h))
       );
       return updatedHandoff;
     } catch (err) {
+      // 5. ROLLBACK: Restore previous state on error
+      setHandoffs(previousHandoffs);
       setError(err instanceof Error ? err.message : 'Failed to approve handoff');
       throw err;
     }
-  }, []);
+  }, [handoffs]);
 
-  // Reject handoff
+  // Reject handoff with optimistic UI update
   const rejectHandoff = useCallback(async (handoffId: string) => {
+    // 1. Store previous state for rollback
+    const previousHandoffs = handoffs;
+
+    // 2. OPTIMISTIC UPDATE: Update status immediately
+    setHandoffs((prev) =>
+      prev.map((h) =>
+        h.id === handoffId ? { ...h, status: 'rejected' as const } : h
+      )
+    );
+
     try {
+      // 3. Make API call
       const updatedHandoff = await handoffQueries.rejectHandoff(handoffId);
 
+      // 4. Update with server response
       setHandoffs((prev) =>
         prev.map((h) => (h.id === handoffId ? updatedHandoff : h))
       );
       return updatedHandoff;
     } catch (err) {
+      // 5. ROLLBACK: Restore previous state on error
+      setHandoffs(previousHandoffs);
       setError(err instanceof Error ? err.message : 'Failed to reject handoff');
       throw err;
     }
-  }, []);
+  }, [handoffs]);
 
-  // Delete handoff
+  // Delete handoff with optimistic UI update
   const deleteHandoff = useCallback(async (handoffId: string) => {
+    // 1. Store deleted handoff for rollback
+    const deletedHandoff = handoffs.find((h) => h.id === handoffId);
+    if (!deletedHandoff) {
+      throw new Error('Handoff not found');
+    }
+
+    // 2. OPTIMISTIC UPDATE: Remove from UI immediately
+    setHandoffs((prev) => prev.filter((h) => h.id !== handoffId));
+
     try {
+      // 3. Make API call
       await handoffQueries.deleteHandoff(handoffId);
 
-      setHandoffs((prev) => prev.filter((h) => h.id !== handoffId));
+      // Handoff successfully deleted, optimistic update was correct
     } catch (err) {
+      // 4. ROLLBACK: Restore deleted handoff on error
+      setHandoffs((prev) => [deletedHandoff, ...prev]);
       setError(err instanceof Error ? err.message : 'Failed to delete handoff');
       throw err;
     }
-  }, []);
+  }, [handoffs]);
 
   return {
     handoffs,

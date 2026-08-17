@@ -1,0 +1,59 @@
+# Vercel Build Exclusions
+# Files and directories that should not be uploaded to Vercel
+
+# Development
+.vscode/
+.idea/
+*.log
+*.swp
+*.swo
+*~
+
+# Testing
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Environment
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.test
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Git
+.git/
+.gitignore
+
+# Node modules are already handled by Vercel
+node_modules/
+
+# Build artifacts (Vercel builds from scratch)
+.next/
+out/
+dist/
+build/
+
+# Misc
+.DS_Store
+Thumbs.db
+.cache/
+temp/
+tmp/
+
+# Scripts (already in repo, no need to upload again)
+scripts/seed-demo-data.ts
+
+# Test files
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+__tests__/

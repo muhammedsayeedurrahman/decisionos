@@ -570,6 +570,38 @@ body {
   }
 }
 
+/* ─── Skeleton Loading Animations ─────────────────────────────── */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+  background: linear-gradient(
+    to right,
+    #f4f4f5 0%,
+    #e4e4e7 20%,
+    #f4f4f5 40%,
+    #f4f4f5 100%
+  );
+  background-size: 1000px 100%;
+}
+
+.dark .animate-shimmer {
+  background: linear-gradient(
+    to right,
+    #27272a 0%,
+    #3f3f46 20%,
+    #27272a 40%,
+    #27272a 100%
+  );
+}
+
 /* ─── Accessibility: Reduced Motion ──────────────────────────── */
 /* Respects user's motion preferences for vestibular disorders and motion sensitivity */
 @media (prefers-reduced-motion: reduce) {
@@ -586,7 +618,8 @@ body {
   .animate-fade-up,
   .recording-pulse,
   .pulse-once,
-  .shadow-hover {
+  .shadow-hover,
+  .animate-shimmer {
     animation: none !important;
   }
 

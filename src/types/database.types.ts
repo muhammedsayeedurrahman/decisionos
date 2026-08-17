@@ -208,6 +208,79 @@ export interface Database {
           created_at?: string;
         };
       };
+      documents: {
+        Row: {
+          id: string;
+          workspace_id: string;
+          uploaded_by: string;
+          filename: string;
+          file_size: number;
+          file_type: string;
+          title: string | null;
+          content: string;
+          embedding: number[] | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          workspace_id: string;
+          uploaded_by: string;
+          filename: string;
+          file_size: number;
+          file_type: string;
+          title?: string | null;
+          content: string;
+          embedding?: number[] | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          workspace_id?: string;
+          uploaded_by?: string;
+          filename?: string;
+          file_size?: number;
+          file_type?: string;
+          title?: string | null;
+          content?: string;
+          embedding?: number[] | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      document_chunks: {
+        Row: {
+          id: string;
+          document_id: string;
+          workspace_id: string;
+          chunk_index: number;
+          content: string;
+          token_count: number;
+          embedding: number[] | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          document_id: string;
+          workspace_id: string;
+          chunk_index: number;
+          content: string;
+          token_count: number;
+          embedding?: number[] | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          document_id?: string;
+          workspace_id?: string;
+          chunk_index?: number;
+          content?: string;
+          token_count?: number;
+          embedding?: number[] | null;
+          created_at?: string;
+        };
+      };
     };
   };
 }

@@ -31,3 +31,6 @@ export async function createClient() {
     }
   );
 }
+
+// Export alias for compatibility with API routes that expect createServerClient
+export { createClient as createServerClient };

@@ -688,7 +688,7 @@ export default function DashboardPage({ role }: DashboardPageProps) {
       )}
 
       {activeTab === 'brain' && (
-        <BrainSearch placeholder={data.aiPlaceholder} respond={data.aiRespond} />
+        <BrainSearch />
       )}
 
       {activeTab === 'finance' && (
