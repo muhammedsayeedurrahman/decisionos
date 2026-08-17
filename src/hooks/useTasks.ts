@@ -116,6 +116,7 @@ export function useTasks(role: Role) {
         const newTask: TaskInsert = {
           workspace_id: profile.workspace_id,
           title: taskData.title,
+          description: taskData.description || null,
           subtext: taskData.subtext || null,
           type: taskData.type || 'TASK',
           source: taskData.source || 'TEXT',
