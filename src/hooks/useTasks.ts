@@ -12,11 +12,12 @@ type TaskUpdate = Database['public']['Tables']['tasks']['Update'];
 
 export interface CreateTaskData {
   title: string;
+  description?: string;
   subtext?: string;
   type?: TaskType;
   source?: TaskSource;
   category?: TaskCategory;
-  assigned_to: Role;
+  assigned_to?: Role;
   done?: boolean;
   scheduled_date?: string;
   reminder_time?: string;
