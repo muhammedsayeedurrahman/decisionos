@@ -74,7 +74,12 @@
       "Bash(/c/code/decisionos-main/src/app/api/task-breakdown/route.ts:*)",
       "Bash(\"C:\\\\code\\\\decisionos-main\\\\src\\\\components\\\\ui\\\\TaskCalendar\\\\index.ts\":*)",
       "Bash(npm run validate-env:*)",
-      "Bash(tee:*)"
+      "Bash(tee:*)",
+      "Bash(for file in task-breakdown/route.ts transcribe/route.ts)",
+      "Bash(do sed -i 's/const openai = new OpenAI\\({/function getOpenAIClient\\(\\) {\\\\n  return new OpenAI\\({/g; s/apiKey: process.env.OPENAI_API_KEY,/apiKey: process.env.OPENAI_API_KEY || \\\\\"\"sk-demo-key\\\\\"\",/g; s/}\\);$/  }\\);\\\\n}/g' \"$file\")",
+      "Bash(done)",
+      "Bash(for file in src/app/api/documents/upload/route.ts src/app/api/documents/search/route.ts src/app/api/task-breakdown/route.ts src/app/api/transcribe/route.ts)",
+      "Bash(do sed -i 's/\\\\bopenai\\\\./getOpenAIClient\\(\\)./g' \"$file\")"
     ]
   }
 }

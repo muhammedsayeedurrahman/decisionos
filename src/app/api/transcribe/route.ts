@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { checkRateLimit } from '@/lib/security/rateLimit';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function getOpenAIClient() {
+  return new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || "sk-demo-key",
+  });
+}
 
 export const runtime = 'nodejs';
 export const maxDuration = 30; // Whisper can take time for long audio
@@ -29,7 +31,8 @@ export async function POST(request: NextRequest) {
     const rateLimitResult = await checkRateLimit(request, {
       maxRequests: 10,
       windowMs: 60000,
-    });
+      });
+}
 
     if (!rateLimitResult.success) {
       return NextResponse.json(
@@ -96,18 +99,20 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(arrayBuffer);
 
     // Create a File-like object for OpenAI
-    const audioFile = new File([buffer], file.name, { type: file.type });
+    const audioFile = new File([buffer], file.name, { type: file.type   });
+}
 
     console.log(`Transcribing audio: ${file.name} (${file.size} bytes, language: ${language})`);
 
     // Call Whisper API
     const startTime = Date.now();
-    const transcription = await openai.audio.transcriptions.create({
+    const transcription = await getOpenAIClient().audio.transcriptions.create({
       file: audioFile,
       model: 'whisper-1',
       language: language === 'auto' ? undefined : language, // Auto-detect if 'auto'
       response_format: 'verbose_json', // Get detailed response with language detection
-    });
+      });
+}
 
     const duration = (Date.now() - startTime) / 1000;
 

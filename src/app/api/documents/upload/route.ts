@@ -3,9 +3,11 @@ import OpenAI from 'openai';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/security/rateLimit';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function getOpenAIClient() {
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY || 'sk-demo-key',
+  });
+}
 
 export const runtime = 'nodejs';
 export const maxDuration = 60; // Document processing can take time
@@ -263,7 +265,7 @@ function chunkText(
  * Generate embedding using OpenAI text-embedding-3-small
  */
 async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await openai.embeddings.create({
+  const response = await getOpenAIClient().embeddings.create({
     model: 'text-embedding-3-small',
     input: text,
     encoding_format: 'float',

@@ -3,9 +3,11 @@ import OpenAI from 'openai';
 import { createClient } from '@/lib/supabase/server';
 import { checkRateLimit } from '@/lib/security/rateLimit';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function getOpenAIClient() {
+  return new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || "sk-demo-key",
+  });
+}
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -33,7 +35,8 @@ export async function POST(request: NextRequest) {
     const rateLimitResult = await checkRateLimit(request, {
       maxRequests: 20,
       windowMs: 60000,
-    });
+      });
+}
 
     if (!rateLimitResult.success) {
       return NextResponse.json(
@@ -62,7 +65,8 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401   });
+}
     }
 
     // Get user's workspace
@@ -73,7 +77,8 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!profile?.workspace_id) {
-      return NextResponse.json({ error: 'No workspace found' }, { status: 400 });
+      return NextResponse.json({ error: 'No workspace found' }, { status: 400   });
+}
     }
 
     // Parse request body
@@ -83,7 +88,8 @@ export async function POST(request: NextRequest) {
     const limit = (body.limit as number) || 5;
 
     if (!query || query.trim().length === 0) {
-      return NextResponse.json({ error: 'Query is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Query is required' }, { status: 400   });
+}
     }
 
     console.log(`Document ${mode}: "${query}" (workspace: ${profile.workspace_id})`);
@@ -155,7 +161,7 @@ export async function POST(request: NextRequest) {
 
       console.log('Generating answer with GPT-4...');
 
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAIClient().chat.completions.create({
         model: 'gpt-4',
         messages: [
           {
@@ -173,7 +179,8 @@ export async function POST(request: NextRequest) {
         ],
         temperature: 0.3, // Lower temperature for more factual responses
         max_tokens: 500,
-      });
+        });
+}
 
       const answer = completion.choices[0].message.content || 'No answer generated.';
 
@@ -195,7 +202,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({ error: 'Invalid mode' }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid mode' }, { status: 400   });
+}
   } catch (error: any) {
     console.error('Document search error:', error);
 
@@ -213,11 +221,12 @@ export async function POST(request: NextRequest) {
  * Generate embedding using OpenAI text-embedding-3-small
  */
 async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await openai.embeddings.create({
+  const response = await getOpenAIClient().embeddings.create({
     model: 'text-embedding-3-small',
     input: text,
     encoding_format: 'float',
-  });
+    });
+}
 
   return response.data[0].embedding;
 }
