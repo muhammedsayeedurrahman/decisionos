@@ -1,63 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { createClient } from '@supabase/supabase-js';
-import { transcribeRateLimit, checkRateLimit, createRateLimitResponse } from '@/lib/rateLimitRedis';
+import { checkRateLimit } from '@/lib/security/rateLimit';
 
-// Initialize OpenAI client (lazy initialization to avoid errors in demo mode)
-let openai: OpenAI | null = null;
-function getOpenAIClient(): OpenAI {
-  if (!openai && process.env.OPENAI_API_KEY) {
-    openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-  }
-  if (!openai) {
-    throw new Error('OpenAI API key not configured');
-  }
-  return openai;
-}
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+export const runtime = 'nodejs';
+export const maxDuration = 30; // Whisper can take time for long audio
 
 /**
  * POST /api/transcribe
  *
- * Transcribe audio file using OpenAI Whisper API
- * Requires authentication
+ * Transcribes audio using OpenAI Whisper API
  *
- * Request: multipart/form-data with audio file
- * Response: { text: string, language?: string, duration?: number }
+ * Request body (multipart/form-data):
+ * - file: Audio file (mp3, mp4, mpeg, mpga, m4a, wav, webm)
+ * - language?: Language code (en, es, fr, de, hi, etc.) or 'auto' for auto-detect
+ *
+ * Response:
+ * - text: Transcribed text
+ * - language: Detected/specified language
+ * - duration: Audio duration in seconds
  */
 export async function POST(request: NextRequest) {
   try {
-    // 1. AUTHENTICATION CHECK
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-      return NextResponse.json(
-        { error: 'Authentication service not configured' },
-        { status: 503 }
-      );
-    }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    );
-
-    const { data: { session }, error: authError } = await supabase.auth.getSession();
-
-    if (authError || !session) {
-      return NextResponse.json(
-        { error: 'Unauthorized. Please sign in to use voice transcription.' },
-        { status: 401 }
-      );
-    }
-
-    const userId = session.user.id;
-
-    // 2. RATE LIMITING (5 transcriptions per minute per user)
-    const rateLimitResult = await checkRateLimit(transcribeRateLimit, userId);
+    // Rate limiting (10 transcriptions per minute)
+    const rateLimitResult = await checkRateLimit(request, {
+      maxRequests: 10,
+      windowMs: 60000,
+    });
 
     if (!rateLimitResult.success) {
       return NextResponse.json(
-        createRateLimitResponse(rateLimitResult.remaining, rateLimitResult.reset),
+        { error: 'Too many requests. Please try again later.' },
         {
           status: 429,
           headers: rateLimitResult.headers,
@@ -65,152 +41,115 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. GET USER'S WORKSPACE
-    const { data: userData, error: userError } = await supabase
-      .from('users')
-      .select('workspace_id')
-      .eq('id', userId)
-      .single();
-
-    if (userError || !userData?.workspace_id) {
-      return NextResponse.json(
-        { error: 'User workspace not found' },
-        { status: 403 }
-      );
-    }
-
-    const workspaceId = userData.workspace_id;
-
-    // Check if API key is configured
+    // Validate environment
     if (!process.env.OPENAI_API_KEY) {
+      console.error('OPENAI_API_KEY not configured');
       return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
+        { error: 'Transcription service not configured' },
         { status: 500 }
       );
     }
 
     // Parse form data
     const formData = await request.formData();
-    const audioFile = formData.get('audio') as File;
-    const language = formData.get('language') as string | null;
+    const file = formData.get('file') as File;
+    const language = (formData.get('language') as string) || 'auto';
 
-    if (!audioFile) {
+    // Validate file
+    if (!file) {
       return NextResponse.json(
         { error: 'No audio file provided' },
         { status: 400 }
       );
     }
 
+    // Validate file size (max 25MB for Whisper API)
+    if (file.size > 25 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: 'Audio file too large. Maximum size is 25MB.' },
+        { status: 400 }
+      );
+    }
+
     // Validate file type
-    const validTypes = [
-      'audio/wav',
+    const allowedTypes = [
       'audio/mpeg',
+      'audio/mp3',
       'audio/mp4',
+      'audio/wav',
       'audio/webm',
-      'audio/ogg',
-      'audio/flac',
+      'audio/m4a',
+      'audio/mpga',
     ];
 
-    if (!validTypes.includes(audioFile.type)) {
+    if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        { error: `Invalid file type: ${audioFile.type}. Supported: WAV, MP3, MP4, WebM, OGG, FLAC` },
+        {
+          error: `Unsupported audio format: ${file.type}. Supported formats: mp3, mp4, wav, webm, m4a`,
+        },
         { status: 400 }
       );
     }
 
-    // Validate file size (max 25MB for Whisper API)
-    const maxSize = 25 * 1024 * 1024; // 25MB
-    if (audioFile.size > maxSize) {
-      return NextResponse.json(
-        { error: `File too large: ${(audioFile.size / 1024 / 1024).toFixed(2)}MB. Max: 25MB` },
-        { status: 400 }
-      );
-    }
-
-    console.log(`Transcribing audio file: ${audioFile.name} (${audioFile.type}, ${(audioFile.size / 1024).toFixed(2)}KB)`);
-
-    // Convert File to format expected by OpenAI API
-    const arrayBuffer = await audioFile.arrayBuffer();
+    // Convert File to format Whisper expects
+    const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
     // Create a File-like object for OpenAI
-    const file = new File([buffer], audioFile.name, { type: audioFile.type });
+    const audioFile = new File([buffer], file.name, { type: file.type });
+
+    console.log(`Transcribing audio: ${file.name} (${file.size} bytes, language: ${language})`);
 
     // Call Whisper API
     const startTime = Date.now();
-    const transcription = await getOpenAIClient().audio.transcriptions.create({
-      file: file,
+    const transcription = await openai.audio.transcriptions.create({
+      file: audioFile,
       model: 'whisper-1',
-      // Use provided language or auto-detect
-      ...(language && language !== 'auto' && { language }),
-      response_format: 'verbose_json', // Get additional metadata
+      language: language === 'auto' ? undefined : language, // Auto-detect if 'auto'
+      response_format: 'verbose_json', // Get detailed response with language detection
     });
 
-    const duration = Date.now() - startTime;
+    const duration = (Date.now() - startTime) / 1000;
 
-    console.log(`Transcription completed in ${duration}ms`);
+    console.log(`Transcription completed in ${duration}s: "${transcription.text.substring(0, 50)}..."`);
 
-    // 4. RECORD TRANSCRIPTION IN DATABASE
-    try {
-      await supabase.from('voice_recordings').insert({
-        user_id: userId,
-        workspace_id: workspaceId,
-        transcript: transcription.text,
-        duration_seconds: transcription.duration || 0,
-        language: transcription.language,
-      });
-    } catch (dbError) {
-      console.error('Failed to record transcription in database:', dbError);
-      // Don't fail the request if database recording fails
-    }
-
-    // Return transcription result with rate limit headers
+    // Return transcription result
     return NextResponse.json(
       {
         text: transcription.text,
-        language: transcription.language,
+        language: transcription.language || language,
         duration: transcription.duration,
         processingTime: duration,
       },
       {
+        status: 200,
         headers: rateLimitResult.headers,
       }
     );
+  } catch (error: any) {
+    console.error('Transcription error:', error);
 
-  } catch (error) {
-    // Log detailed error server-side only
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Transcription error:', error);
-    } else {
-      console.error('Transcription failed');
+    // Handle OpenAI API errors
+    if (error.status === 401) {
+      return NextResponse.json(
+        { error: 'Invalid API key configuration' },
+        { status: 500 }
+      );
     }
 
-    if (error instanceof OpenAI.APIError) {
-      // Sanitize error message for production
-      const userMessage = process.env.NODE_ENV === 'development'
-        ? error.message
-        : 'Transcription service temporarily unavailable';
-
+    if (error.status === 429) {
       return NextResponse.json(
-        { error: 'Transcription failed', message: userMessage },
-        { status: error.status || 500 }
+        { error: 'OpenAI API rate limit exceeded. Please try again later.' },
+        { status: 429 }
       );
     }
 
     return NextResponse.json(
-      { error: 'Failed to transcribe audio' },
+      {
+        error: 'Transcription failed',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      },
       { status: 500 }
     );
   }
-}
-
-// Handle OPTIONS for CORS
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  });
 }

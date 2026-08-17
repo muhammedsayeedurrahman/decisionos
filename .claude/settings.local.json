@@ -70,7 +70,8 @@
       "Bash(gh run list:*)",
       "Bash(gh run view:*)",
       "Bash(gh run watch:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(/c/code/decisionos-main/src/app/api/task-breakdown/route.ts:*)"
     ]
   }
 }
