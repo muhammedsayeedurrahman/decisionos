@@ -133,15 +133,17 @@ export function WelcomeModal({ isOpen, onClose, onComplete, role, userName }: We
             className="
               relative
               w-full max-w-2xl
+              max-h-[90vh] sm:max-h-[85vh]
               bg-white dark:bg-zinc-900
               rounded-2xl
               shadow-2xl
               border border-zinc-200 dark:border-zinc-800
               overflow-hidden
+              flex flex-col
             "
           >
             {/* Header */}
-            <div className="relative bg-gradient-to-br from-brand-red to-red-700 p-8 text-white">
+            <div className="relative bg-gradient-to-br from-brand-red to-red-700 p-6 sm:p-8 text-white shrink-0">
               <button
                 onClick={handleSkip}
                 className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-lg transition-colors"
@@ -177,7 +179,7 @@ export function WelcomeModal({ isOpen, onClose, onComplete, role, userName }: We
             </div>
 
             {/* Content */}
-            <div className="p-8">
+            <div className="p-6 sm:p-8 overflow-y-auto flex-1">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={currentStep}

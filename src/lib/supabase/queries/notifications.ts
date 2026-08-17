@@ -1,7 +1,7 @@
 import { createClient } from '../client';
+import type { Database } from '@/types/database.types';
 
 const supabase = createClient();
-// TODO: Import Database type from generated Supabase types
 
 type NotificationRow = Database['public']['Tables']['notifications']['Row'];
 

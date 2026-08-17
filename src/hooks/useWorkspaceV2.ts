@@ -5,6 +5,7 @@ import { useTasks, useHandoffs, useNotifications } from '@/lib/supabase/hooks';
 import { useAuth } from '@/contexts/AuthContext';
 import { routeDirective } from '@/utils/sharedState';
 import { Role, ROLES } from '@/config/roles';
+import { getProfileByRole } from '@/lib/supabase/queries';
 
 export type VoiceState = 'idle' | 'recording' | 'thinking' | 'done';
 
@@ -32,6 +33,14 @@ export function useWorkspaceV2(role: Role) {
   const [transcribedText, setTranscribedText] = useState('');
   const [textDirective, setTextDirective] = useState('');
 
+  // Cache of role-to-userId mappings for the workspace
+  const [roleToUserIdMap, setRoleToUserIdMap] = useState<Record<Role, string | null>>({
+    owner: null,
+    sales: null,
+    production: null,
+    finance: null,
+  });
+
   // Load theme preference on mount
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
@@ -40,6 +49,37 @@ export function useWorkspaceV2(role: Role) {
     setTheme(next);
     document.documentElement.classList.toggle('dark', next === 'dark');
   }, []);
+
+  // Fetch workspace users and build role-to-userId mapping
+  useEffect(() => {
+    async function fetchWorkspaceUsers() {
+      if (!profile?.workspace_id) return;
+
+      try {
+        // Fetch user for each role in the workspace
+        const roles: Role[] = ['owner', 'sales', 'production', 'finance'];
+        const mapping: Record<Role, string | null> = {
+          owner: null,
+          sales: null,
+          production: null,
+          finance: null,
+        };
+
+        await Promise.all(
+          roles.map(async (r) => {
+            const userProfile = await getProfileByRole(profile.workspace_id, r);
+            mapping[r] = userProfile?.id ?? null;
+          })
+        );
+
+        setRoleToUserIdMap(mapping);
+      } catch (error) {
+        console.error('Failed to fetch workspace users:', error);
+      }
+    }
+
+    fetchWorkspaceUsers();
+  }, [profile?.workspace_id]);
 
   const triggerAlert = useCallback((msg: string) => {
     setAlertMsg(msg);
@@ -104,10 +144,8 @@ export function useWorkspaceV2(role: Role) {
     }
 
     try {
-      // Find the user ID for the assigned role
-      // For now, we'll use the current user's ID if assigning to self
-      // TODO: Fetch workspace users and map role to user ID
-      const assignedUserId = cardData.assignedTo === role ? profile.id : null;
+      // Map role to user ID using the cached mapping
+      const assignedUserId = roleToUserIdMap[cardData.assignedTo] ?? null;
 
       await createTask({
         title: cardData.title,
