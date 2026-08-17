@@ -1,0 +1,13 @@
+# Sharma Textiles - Sales Dashboard Requirements
+# Location: src/app/demo/sales/
+
+## Core Features
+1. Workflows Pipeline Board: A 4-stage Kanban tracking board (Leads, Negotiation, Contract Review, Loom Scheduled).
+2. Advanced Stages: Move pipeline cards with click-to-advance stage controls.
+3. Card Creation Dialog: Pop-up neobrutalist modal dialog to add new pipeline deals.
+4. Overdue Tasks Widget: Alert items specifying overdue days.
+
+## Styling Rules
+- Active brand-blue border accents.
+- Modern vector icons.
+- Neobrutalist design details.

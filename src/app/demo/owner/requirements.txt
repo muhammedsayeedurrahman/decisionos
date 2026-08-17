@@ -1,0 +1,13 @@
+# Sharma Textiles - Owner Dashboard Requirements
+# Location: src/app/demo/owner/
+
+## Core Features
+1. CEO Briefing Widget: Summarizes cash balances, pipeline orders, dyeing defect patterns, and review count.
+2. Decision Desk: Handles Voice-directed AI capture simulation with pulse recording, thinking animations, text directive inputs, and pending approval cards.
+3. Company Brain Ask AI: Interactive mock-scan of documents with 3 suggested queries.
+4. Finance Overview: Monthly bar chart with 6-month historical overview.
+5. Directory List: Team member avatars and profiles.
+
+## Styling Rules
+- Neobrutalist high-contrast inputs.
+- Active brand-red accent borders.

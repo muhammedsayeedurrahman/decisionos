@@ -1,0 +1,13 @@
+# Sharma Textiles - Finance Dashboard Requirements
+# Location: src/app/demo/finance/
+
+## Core Features
+1. Ledger Overviews: Tracks Total Spend, Outstanding Bills, Asset Value, and Inventory Value.
+2. Monthly Spend Chart: Graphing visual monthly spends.
+3. Interactive Expense Dialog: AI scanning mockup triggers autofill inputs for title, category, vendor, amount, status.
+4. Assets Grid: Capital machinery value and bought data logs.
+5. Inventory Grid: Roll and spindle stock details with quantity valuation.
+
+## Styling Rules
+- Active brand-yellow border accents.
+- Detailed spreadsheet list layouts.

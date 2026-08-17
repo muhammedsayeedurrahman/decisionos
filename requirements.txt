@@ -1,0 +1,21 @@
+# DecisionOS Frontend Clone Project Requirements
+# This file lists the common requirements and architecture for the Next.js App Router subfolders.
+
+# Project Stack
+next==16.3.0
+react==19.0.0
+react-dom==19.0.0
+tailwindcss==4.0.0
+typescript==5.0.0
+lucide-react==0.400.0
+
+# General Setup
+- .env: Main configuration file containing simulate flags and app secrets.
+- Globals CSS: Contains the brutalist utility classes, dot-grid background, and global themes.
+
+# Pages and Subfolders Organization:
+- /: src/app/page.tsx (DecisionOS Login Page, redirects/auto-logs to demos)
+- /demo/owner: src/app/demo/owner/page.tsx (Sharma Textiles Owner Dashboard - Brief, Decision Desk, Ask AI, Finance, People)
+- /demo/sales: src/app/demo/sales/page.tsx (Sharma Textiles Sales Dashboard - Workflows Board, My Work, Capture)
+- /demo/production: src/app/demo/production/page.tsx (Sharma Textiles Production Dashboard - Workflows pipelines, Task Board, My Work)
+- /demo/finance: src/app/demo/finance/page.tsx (Sharma Textiles Finance Dashboard - Ledger, Expenses, Assets, Inventory, AI analysis)

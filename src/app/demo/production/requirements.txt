@@ -1,0 +1,12 @@
+# Sharma Textiles - Production Dashboard Requirements
+# Location: src/app/demo/production/
+
+## Core Features
+1. Fulfilment Pipeline Board: A 5-stage production tracking board (Preparation, Loom Setup, Dyeing, Packing, Dispatch).
+2. Advanced Stages: Advance jobs through stages or mark them as "Hold" to halt production issues.
+3. Operations Checklist: Floor list tracking warp tension and coloring batch priorities.
+4. Alerts Window: Warning notifications for dyeing stocks and loom friction.
+
+## Styling Rules
+- Active brand-green border accents.
+- Brutalist card borders and status pill colors.
