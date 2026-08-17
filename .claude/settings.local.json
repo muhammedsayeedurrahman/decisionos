@@ -66,7 +66,9 @@
       "Bash(/c/code/decisionos-main/FEATURES.md:*)",
       "WebFetch(domain:decisionos-khaki.vercel.app)",
       "Bash(git reset:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(gh run list:*)",
+      "Bash(gh run view:*)"
     ]
   }
 }

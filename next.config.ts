@@ -11,10 +11,6 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Temporarily ignore ESLint errors during build
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   async headers() {
     return [
       {

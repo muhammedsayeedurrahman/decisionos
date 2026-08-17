@@ -158,6 +158,7 @@ describe('/api/upload - Integration Tests', () => {
     it('returns 429 when rate limit is exceeded', async () => {
       vi.mocked(checkRateLimit).mockResolvedValue({
         success: false,
+        limit: 10,
         remaining: 0,
         reset: Date.now() + 60000,
         headers: {
@@ -183,6 +184,7 @@ describe('/api/upload - Integration Tests', () => {
     it('allows upload when within rate limit', async () => {
       vi.mocked(checkRateLimit).mockResolvedValue({
         success: true,
+        limit: 10,
         remaining: 9,
         reset: Date.now() + 60000,
         headers: {
@@ -251,6 +253,7 @@ describe('/api/upload - Integration Tests', () => {
 
       vi.mocked(checkRateLimit).mockResolvedValue({
         success: true,
+        limit: 10,
         remaining: 9,
         reset: Date.now() + 60000,
         headers: {
@@ -359,6 +362,7 @@ describe('/api/upload - Integration Tests', () => {
 
       vi.mocked(checkRateLimit).mockResolvedValue({
         success: true,
+        limit: 10,
         remaining: 9,
         reset: Date.now() + 60000,
         headers: {
@@ -465,6 +469,7 @@ describe('/api/upload - Integration Tests', () => {
 
       vi.mocked(checkRateLimit).mockResolvedValue({
         success: true,
+        limit: 10,
         remaining: 9,
         reset: Date.now() + 60000,
         headers: {
@@ -571,6 +576,7 @@ describe('/api/upload - Integration Tests', () => {
 
       vi.mocked(checkRateLimit).mockResolvedValue({
         success: true,
+        limit: 10,
         remaining: 9,
         reset: Date.now() + 60000,
         headers: {
