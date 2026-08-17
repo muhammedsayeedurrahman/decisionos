@@ -7,6 +7,8 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useWorkspace } from '../useWorkspace';
 import * as sharedState from '@/utils/sharedState';
 import { WorkspaceState } from '@/utils/sharedState';
+import { NotificationProvider } from '@/contexts/NotificationContext';
+import React from 'react';
 
 // Mock the sharedState utilities
 vi.mock('@/utils/sharedState', async () => {
@@ -67,6 +69,11 @@ const MOCK_STATE: WorkspaceState = {
   notifications: { owner: 4, sales: 7, production: 3, finance: 5 },
 };
 
+// Wrapper component to provide NotificationProvider
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <NotificationProvider>{children}</NotificationProvider>
+);
+
 describe('useWorkspace', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -83,7 +90,7 @@ describe('useWorkspace', () => {
 
   describe('Initialization', () => {
     it('loads workspace state from localStorage on mount', () => {
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       expect(sharedState.getSharedState).toHaveBeenCalledOnce();
       expect(result.current.workspaceState).toEqual(MOCK_STATE);
@@ -92,7 +99,7 @@ describe('useWorkspace', () => {
     it('initializes theme from localStorage', () => {
       localStorage.setItem('theme', 'dark');
 
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       expect(result.current.theme).toBe('dark');
       expect(document.documentElement.classList.contains('dark')).toBe(true);
@@ -111,7 +118,7 @@ describe('useWorkspace', () => {
         dispatchEvent: vi.fn(),
       }));
 
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       expect(result.current.theme).toBe('dark');
     });
@@ -128,13 +135,13 @@ describe('useWorkspace', () => {
         dispatchEvent: vi.fn(),
       }));
 
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       expect(result.current.theme).toBe('light');
     });
 
     it('loads role configuration correctly', () => {
-      const { result: ownerResult } = renderHook(() => useWorkspace('owner'));
+      const { result: ownerResult } = renderHook(() => useWorkspace('owner'), { wrapper });
       expect(ownerResult.current.config.personName).toBe('Rajesh Sharma');
       expect(ownerResult.current.config.id).toBe('owner');
       expect(ownerResult.current.config.roleLabel).toBe('OWNER');
@@ -148,7 +155,7 @@ describe('useWorkspace', () => {
 
   describe('Theme Toggle', () => {
     it('toggles theme from light to dark', () => {
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       expect(result.current.theme).toBe('light');
 
@@ -163,7 +170,7 @@ describe('useWorkspace', () => {
 
     it('toggles theme from dark to light', () => {
       localStorage.setItem('theme', 'dark');
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       expect(result.current.theme).toBe('dark');
 
@@ -179,7 +186,7 @@ describe('useWorkspace', () => {
 
   describe('Task Mutations', () => {
     it('marks task as done', () => {
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       act(() => {
         result.current.handleMarkDone(1);
@@ -196,7 +203,7 @@ describe('useWorkspace', () => {
     });
 
     it('toggles task done state', () => {
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       // Mark done
       act(() => {
@@ -212,7 +219,7 @@ describe('useWorkspace', () => {
     });
 
     it('dismisses task', () => {
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       act(() => {
         result.current.handleDismiss(1);
@@ -227,7 +234,7 @@ describe('useWorkspace', () => {
     });
 
     it('handles dismiss of non-existent task gracefully', () => {
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       act(() => {
         result.current.handleDismiss(999);
@@ -239,7 +246,7 @@ describe('useWorkspace', () => {
 
     it('sends task to board with alert', () => {
       vi.useFakeTimers();
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       act(() => {
         result.current.handleSendToBoard('Test Task');
@@ -260,7 +267,7 @@ describe('useWorkspace', () => {
   describe('Notification Management', () => {
     it('clears notifications for current role', () => {
       vi.useFakeTimers();
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       expect(result.current.workspaceState.notifications.owner).toBe(4);
 
@@ -276,7 +283,7 @@ describe('useWorkspace', () => {
     });
 
     it('does not clear notifications for other roles', () => {
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       act(() => {
         result.current.handleClearNotifications();
@@ -291,7 +298,7 @@ describe('useWorkspace', () => {
   describe('Text Directive Handling', () => {
     it('structures text directive and creates task', () => {
       vi.useFakeTimers();
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       act(() => {
         result.current.setTextDirective('Call Priya about new order');
@@ -312,7 +319,7 @@ describe('useWorkspace', () => {
     });
 
     it('does not create task for empty text directive', () => {
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       act(() => {
         result.current.setTextDirective('   ');
@@ -326,7 +333,7 @@ describe('useWorkspace', () => {
     });
 
     it('increments notification for other role when creating task', () => {
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       act(() => {
         result.current.setTextDirective('Ask Amit to check looms');
@@ -341,7 +348,7 @@ describe('useWorkspace', () => {
     });
 
     it('does not increment notification when assigning to self', () => {
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       act(() => {
         result.current.setTextDirective('Random task for owner');
@@ -359,7 +366,7 @@ describe('useWorkspace', () => {
   describe('Alert Messages', () => {
     it('triggers alert and auto-clears after 3 seconds', async () => {
       vi.useFakeTimers();
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       expect(result.current.alertMsg).toBeNull();
 
@@ -380,7 +387,7 @@ describe('useWorkspace', () => {
 
     it('overwrites previous alert when new one is triggered', () => {
       vi.useFakeTimers();
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       act(() => {
         result.current.triggerAlert('First alert');
@@ -400,7 +407,7 @@ describe('useWorkspace', () => {
 
   describe('Cross-Tab Sync', () => {
     it('updates state when storage event is received', () => {
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       const newState: WorkspaceState = {
         cards: [
@@ -432,7 +439,7 @@ describe('useWorkspace', () => {
     });
 
     it('ignores storage events for other keys', () => {
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       const originalState = result.current.workspaceState;
 
@@ -448,7 +455,7 @@ describe('useWorkspace', () => {
     });
 
     it('handles malformed JSON in storage event gracefully', () => {
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       const originalState = result.current.workspaceState;
 
@@ -473,14 +480,14 @@ describe('useWorkspace', () => {
         notifications: { owner: 0, sales: 0, production: 0, finance: 0 },
       });
 
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       expect(result.current.workspaceState.cards).toHaveLength(0);
     });
 
     it('handles multiple rapid alert triggers', () => {
       vi.useFakeTimers();
-      const { result } = renderHook(() => useWorkspace('owner'));
+      const { result } = renderHook(() => useWorkspace('owner'), { wrapper });
 
       act(() => {
         result.current.triggerAlert('Alert 1');

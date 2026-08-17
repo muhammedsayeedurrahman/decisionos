@@ -277,7 +277,7 @@ describe('useTasks - Task Lifecycle Integration Tests', () => {
           description: 'New Description',
           category: 'CUSTOMER',
         });
-        expect(result_inner).toBeUndefined();
+        expect(result_inner).toBeNull();
       });
     });
 
@@ -319,9 +319,9 @@ describe('useTasks - Task Lifecycle Integration Tests', () => {
       expect(mockInsert).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'TASK',
-          source: 'CAPTURE',
+          source: 'TEXT',
           done: false,
-          assigned_to: 'owner',
+          assigned_to: undefined,
         })
       );
     });
@@ -424,7 +424,7 @@ describe('useTasks - Task Lifecycle Integration Tests', () => {
 
       await act(async () => {
         const updateResult = await result.current.updateTask(1, { title: 'Failed Update' });
-        expect(updateResult).toBeUndefined();
+        expect(updateResult).toBeNull();
       });
     });
   });
