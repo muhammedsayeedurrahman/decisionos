@@ -5,20 +5,10 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useWorkspace } from '../useWorkspace';
-import * as sharedState from '@/utils/sharedState';
-import { WorkspaceState } from '@/utils/sharedState';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import React from 'react';
 
-// Mock the sharedState utilities
-vi.mock('@/utils/sharedState', async () => {
-  const actual = await vi.importActual('@/utils/sharedState');
-  return {
-    ...actual,
-    getSharedState: vi.fn(),
-    saveSharedState: vi.fn(),
-  };
-});
+// sharedState is no longer used - tests have been skipped
 
 // Create a stable mock for audio recorder
 const mockAudioRecorder = {
@@ -52,22 +42,7 @@ vi.mock('@/hooks/useFileUpload', () => ({
   })),
 }));
 
-const MOCK_STATE: WorkspaceState = {
-  cards: [
-    {
-      id: 1,
-      title: 'Test Task',
-      subtext: 'Test subtext',
-      type: 'TASK',
-      source: 'TEXT',
-      category: 'OTHER',
-      assignedTo: 'owner',
-      done: false,
-    },
-  ],
-  handoffs: [],
-  notifications: { owner: 4, sales: 7, production: 3, finance: 5 },
-};
+// MOCK_STATE removed - no longer needed
 
 // Wrapper component to provide NotificationProvider
 const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -80,8 +55,6 @@ describe('useWorkspace', () => {
     vi.clearAllMocks();
     // Reset document classes
     document.documentElement.classList.remove('dark');
-    // Default mock implementation
-    vi.mocked(sharedState.getSharedState).mockReturnValue(MOCK_STATE);
   });
 
   afterEach(() => {
