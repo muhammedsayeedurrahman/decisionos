@@ -52,16 +52,16 @@ export default function HomePage() {
                 Decision<span className="text-brand-red">OS</span>
               </h1>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <Link
                 href="/login"
-                className="px-4 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-brand-red transition-colors"
+                className="px-3 sm:px-4 py-2 min-h-[44px] flex items-center text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-brand-red transition-colors"
               >
                 Sign In
               </Link>
               <Link
                 href="/signup"
-                className="px-4 py-2 text-sm font-bold bg-brand-red text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="px-3 sm:px-4 py-2 min-h-[44px] flex items-center text-sm font-bold bg-brand-red text-white rounded-lg hover:bg-red-700 transition-colors shadow-sm active:shadow-none active:translate-y-0.5"
               >
                 Get Started
               </Link>
@@ -71,12 +71,12 @@ export default function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24">
-        <div className="text-center mb-16">
-          <h2 className="font-heading font-black text-4xl sm:text-5xl md:text-6xl text-zinc-900 dark:text-white mb-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 md:py-24">
+        <div className="text-center mb-12 sm:mb-16">
+          <h2 className="font-heading font-black text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-zinc-900 dark:text-white mb-4 sm:mb-6 leading-tight">
             Your Company Brain
           </h2>
-          <p className="text-xl text-zinc-600 dark:text-zinc-400 max-w-3xl mx-auto mb-8">
+          <p className="text-base sm:text-lg md:text-xl text-zinc-600 dark:text-zinc-400 max-w-3xl mx-auto mb-6 sm:mb-8 px-4">
             Multi-view task management with real-time collaboration, voice input, and smart routing.
             Built for manufacturing teams who need to stay synchronized.
           </p>
@@ -99,7 +99,7 @@ export default function HomePage() {
                 <Link
                   key={demo.role}
                   href={`/demo/${demo.role}`}
-                  className="group relative bg-white dark:bg-zinc-900 rounded-2xl border-2 border-zinc-200 dark:border-zinc-800 p-6 hover:border-brand-red hover:shadow-xl transition-all duration-300"
+                  className="group relative bg-white dark:bg-zinc-900 rounded-2xl border-2 border-zinc-200 dark:border-zinc-800 p-6 sm:p-8 hover:border-brand-red hover:shadow-xl transition-all duration-300 active:scale-[0.98] min-h-[180px] flex flex-col"
                 >
                   <div className={`w-12 h-12 ${demo.color} rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                     <Icon className="w-6 h-6 text-white" />

@@ -117,7 +117,7 @@ export default function SignupPage() {
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white focus:ring-2 focus:ring-brand-red focus:border-transparent"
+                className="w-full px-4 py-3 min-h-[48px] text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white focus:ring-2 focus:ring-brand-red focus:border-transparent"
                 placeholder="Rajesh Sharma"
               />
             </div>
@@ -132,7 +132,7 @@ export default function SignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white focus:ring-2 focus:ring-brand-red focus:border-transparent"
+                className="w-full px-4 py-3 min-h-[48px] text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white focus:ring-2 focus:ring-brand-red focus:border-transparent"
                 placeholder="you@example.com"
               />
             </div>
@@ -148,7 +148,7 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white focus:ring-2 focus:ring-brand-red focus:border-transparent"
+                className="w-full px-4 py-3 min-h-[48px] text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white focus:ring-2 focus:ring-brand-red focus:border-transparent"
                 placeholder="••••••••"
               />
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -164,7 +164,7 @@ export default function SignupPage() {
                 id="role"
                 value={role}
                 onChange={(e) => setRole(e.target.value as Role)}
-                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white focus:ring-2 focus:ring-brand-red focus:border-transparent"
+                className="w-full px-4 py-3 min-h-[48px] text-base border border-zinc-300 dark:border-zinc-700 rounded-lg bg-white dark:bg-zinc-950 text-zinc-900 dark:text-white focus:ring-2 focus:ring-brand-red focus:border-transparent"
               >
                 <option value="owner">Owner</option>
                 <option value="sales">Sales Manager</option>
@@ -176,7 +176,7 @@ export default function SignupPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-brand-red hover:bg-red-700 text-white font-bold py-3 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-brand-red hover:bg-red-700 active:bg-red-800 text-white font-bold py-3 px-4 min-h-[48px] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm active:shadow-none active:translate-y-0.5"
             >
               {loading ? 'Creating account...' : 'Create account'}
             </button>
