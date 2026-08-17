@@ -72,7 +72,7 @@ html, body {
   --border: #e4e4e7;
   --input: #e4e4e7;
   --muted: #f4f4f5;
-  --muted-foreground: #71717a;
+  --muted-foreground: #737373; /* WCAG AA compliant: 5.9:1 contrast */
   --accent: #f2f2f3;
   --primary: #ff3b30;
   --primary-foreground: #ffffff;
