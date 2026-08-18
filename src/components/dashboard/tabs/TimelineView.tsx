@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import FullCalendar from '@fullcalendar/react';
-import timelinePlugin from '@fullcalendar/timeline';
+import resourceTimelinePlugin from '@fullcalendar/resource-timeline';
 import interactionPlugin from '@fullcalendar/interaction';
 import { TaskCard } from '@/utils/sharedState';
 import { Role } from '@/config/roles';
@@ -39,6 +39,7 @@ export default function TimelineView({
 
       return {
         id: String(card.id),
+        resourceId: card.assignedTo || role,
         title: card.title,
         start: createdDate,
         end: dueDate,
@@ -92,12 +93,12 @@ export default function TimelineView({
 
       <div className="timeline-calendar">
         <FullCalendar
-          plugins={[timelinePlugin, interactionPlugin]}
-          initialView="timelineMonth"
+          plugins={[resourceTimelinePlugin, interactionPlugin]}
+          initialView="resourceTimelineMonth"
           headerToolbar={{
             left: 'prev,next today',
             center: 'title',
-            right: 'timelineDay,timelineWeek,timelineMonth',
+            right: 'resourceTimelineDay,resourceTimelineWeek,resourceTimelineMonth',
           }}
           events={events}
           resources={resources}
